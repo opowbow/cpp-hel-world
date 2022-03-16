@@ -3,7 +3,9 @@
 This repository contains an example showing how to deploy C++ applications in
 Google Cloud Run.
 
+# Cloud Run Button
 
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run)
 
 ## Prerequisites
 
