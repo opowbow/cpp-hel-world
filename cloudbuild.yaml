@@ -12,23 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-timeout: 1800s
-options:
-  machineType: 'N1_HIGHCPU_8'
-  diskSizeGb: '512'
-substitutions:
-  _CONTEXT: 'dir:///workspace/'
-
 steps:
-  # Create a container, use Kaniko to cache the temporary results.
-  - name: 'gcr.io/kaniko-project/executor:v1.8.0-debug'
-    args: [
-        # Using a substitution here allows us to call this script from
-        # the top-level directory, as Cloud Build does.
-        "--context=${_CONTEXT}",
-        "--dockerfile=Dockerfile",
-        "--cache=true",
-        "--cache-repo=gcr.io/${PROJECT_ID}/cpp-samples/ci/cache",
-        "--destination=gcr.io/${PROJECT_ID}/cloud-run-hello",
-    ]
-    timeout: 1800s
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--no-cache'
+      - '-t'
+      - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - .
+      - '-f'
+      - Dockerfile
+    id: Build
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+    id: Push
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - services
+      - update
+      - $_SERVICE_NAME
+      - '--platform=managed'
+      - '--image=$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - >-
+        --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID,$_LABELS
+      - '--region=$_DEPLOY_REGION'
+      - '--quiet'
+    id: Deploy
+    entrypoint: gcloud
+images:
+  - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+options:
+  substitutionOption: ALLOW_LOOSE
+substitutions:
+  _PLATFORM: managed
+  _SERVICE_NAME: cpp-hel-world
+  _DEPLOY_REGION: asia-southeast1
+  _GCR_HOSTNAME: asia.gcr.io
+  _LABELS: gcb-trigger-id=2e3f53f1-46c9-44ec-9b04-38b15cc529dd
+  _TRIGGER_ID: 2e3f53f1-46c9-44ec-9b04-38b15cc529dd
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - gcp-cloud-build-deploy-cloud-run-managed
+  - cpp-hel-world
