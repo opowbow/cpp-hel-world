@@ -1,7 +1,7 @@
 # Cloud Run for C++ hello
 
 This repository contains an example showing how to deploy C++ applications in
-Google Cloud Run
+Google Cloud Run. From Google samples
 
 # Cloud Run Button
 
